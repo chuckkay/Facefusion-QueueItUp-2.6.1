@@ -18,7 +18,7 @@ from tkinter import filedialog, font, Toplevel, messagebox, PhotoImage, Scrollba
 from facefusion import metadata
 from facefusion.processors.frame import choices as frame_processors_choices
 from facefusion import choices as ff_choices
-from facefusion.uis.components import about, common_options, execution, execution_queue_count, execution_thread_count, face_analyser, face_masker, face_selector, frame_processors, frame_processors_options, memory, output, output_options, preview, source, target, temp_frame, trim_frame
+from facefusion.uis.components import common_options, execution, execution_queue_count, execution_thread_count, face_analyser, face_masker, face_selector, frame_processors, frame_processors_options, memory, output, output_options, preview, source, target, temp_frame, trim_frame
 import facefusion.globals
 from facefusion.processors.frame import globals as frame_processors_globals
 
@@ -47,7 +47,7 @@ def render() -> gradio.Blocks:
 		with gradio.Row():
 			with gradio.Column(scale = 2):
 				with gradio.Blocks():
-					about.render()
+					ABOUT.render()
 				with gradio.Blocks():
 					frame_processors.render()
 				with gradio.Blocks():
@@ -61,7 +61,7 @@ def render() -> gradio.Blocks:
 				with gradio.Blocks():
 					temp_frame.render()
 				with gradio.Blocks():
-					output_options.render()	
+					output_options.render()
 			with gradio.Column(scale = 2):
 				with gradio.Blocks():
 					source.render()
@@ -121,13 +121,8 @@ def listen() -> None:
 
 
 def run(ui : gradio.Blocks) -> None:
-	if not automatic1111:
-			ui.launch(show_api = False, inbrowser = facefusion.globals.open_browser)
-	if automatic1111:
-		import multiprocessing
-		concurrency_count = min(8, multiprocessing.cpu_count())
-		ui.queue(concurrency_count = concurrency_count).launch(show_api = False, quiet = True)
-	
+	ui.launch(show_api = False, inbrowser = facefusion.globals.open_browser)
+
 def assemble_queue():
 	global RUN_JOBS_BUTTON, ADD_JOB_BUTTON, jobs_queue_file, jobs, STATUS_WINDOW, default_values, current_values
 	missing_paths = []
@@ -1287,27 +1282,14 @@ def RUN_job_args(current_run_job):
 	simulated_args = f"{arg_source_paths} {arg_target_path} {arg_output_path} {current_run_job['headless']} {current_run_job['job_args']}"
 	simulated_cmd = simulated_args.replace('\\\\', '\\')
 
-	if automatic1111:
-
-		#debug_print (f"{venv_python} {base_dir}\\run2.py {simulated_cmd}")
-		process = subprocess.Popen(
-			f"{venv_python} {base_dir}\\run2.py {simulated_cmd}",
-			shell=True,
-			stdout=subprocess.PIPE,
-			stderr=subprocess.PIPE,
-			text=True,
-			bufsize=1  # Line-buffered
-		)
-	else:
-		#debug_print(f"{BLUE}python run.py {simulated_cmd}")
-		process = subprocess.Popen(
-			f"python run.py {simulated_cmd}",
-			shell=True,
-			stdout=subprocess.PIPE,
-			stderr=subprocess.PIPE,
-			text=True,
-			bufsize=1  # Line-buffered
-		)
+	process = subprocess.Popen(
+		f"python run.py {simulated_cmd}",
+		shell=True,
+		stdout=subprocess.PIPE,
+		stderr=subprocess.PIPE,
+		text=True,
+		bufsize=1  # Line-buffered
+	)
 
 	# process.wait()	# Wait for process to complete
 	stdout_lines = []
@@ -1791,14 +1773,9 @@ ENDC = '\033[0m'	   #use this	Resets color to default
 
 print(f"{BLUE}FaceFusion version: {GREEN}{facefusion_version}{ENDC}")
 print(f"{BLUE}QueueItUp! version: {GREEN}{queueitup_version}{ENDC}")
-if not automatic1111:
-	default_values = get_values_from_FF("default_values")	
-	settings_path = default_values.get("config_path", "")
+default_values = get_values_from_FF("default_values")
+settings_path = default_values.get("config_path", "")
 	
-if automatic1111:
-	import facefusion.core2 as core2
-	venv_python = os.path.normpath(os.path.join(os.path.dirname(os.path.dirname(base_dir)), 'venv', 'scripts', 'python.exe'))
-	settings_path = os.path.join(base_dir, "facefusion.ini")
 
 
 
@@ -1807,6 +1784,7 @@ initialize_settings()
 create_and_verify_json(jobs_queue_file)
 
 thumbnail_dir = os.path.normpath(os.path.join(working_dir, "thumbnails"))
+ABOUT = gradio.Button(value = 'QUEUEITUP', variant = 'primary', link = 'https://github.com/chuckkay')
 
 ADD_JOB_BUTTON = gradio.Button("Add Job ", variant="primary")
 RUN_JOBS_BUTTON = gradio.Button("Run Jobs", variant="primary")
@@ -1830,8 +1808,6 @@ debug_print("FaceFusion Base Directory:", base_dir)
 debug_print("QueueItUp Working Directory:", working_dir)
 debug_print("QueueItUp Media Cache Directory:", media_cache_dir)
 debug_print("Jobs Queue File:", jobs_queue_file)
-if automatic1111:
-	debug_print("the Venv Python Path is:", venv_python)
 debug_print(f"{BLUE}Welcome Back To QueueItUp The FaceFusion Queueing Addon{ENDC}\n\n")
 debug_print(f"QUEUEITUP{BLUE} COLOR OUTPUT KEY")
 debug_print(f"{BLUE}BLUE = normal QueueItUp color output key")
