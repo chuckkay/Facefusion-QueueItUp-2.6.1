@@ -9,7 +9,7 @@ import facefusion.globals
 from facefusion import logger, process_manager
 from facefusion.typing import OutputVideoPreset, Fps, AudioBuffer
 from facefusion.filesystem import get_temp_frames_pattern, get_temp_file_path
-from facefusion.vision import restrict_video_fps
+from facefusion.vision import count_video_frame_total, restrict_video_fps
 
 
 def run_ffmpeg(args : List[str]) -> bool:
@@ -113,9 +113,8 @@ def merge_video(target_path : str, output_video_resolution : str, output_video_f
 	commands.extend([ '-vf', 'framerate=fps=' + str(output_video_fps), '-pix_fmt', 'yuv420p', '-colorspace', 'bt709', '-y', temp_file_path ])
 
 	# Calculate frame count
-	trim_frame_start = state_manager.get_item('trim_frame_start')
-	trim_frame_end = state_manager.get_item('trim_frame_end')
-
+	trim_frame_start = facefusion.globals.trim_frame_start
+	trim_frame_end = facefusion.globals.trim_frame_end
 	if isinstance(trim_frame_start, int) and isinstance(trim_frame_end, int):
 		frame_count = (trim_frame_end - trim_frame_start)
 	elif isinstance(trim_frame_start, int):
