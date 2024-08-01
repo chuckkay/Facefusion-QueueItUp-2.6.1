@@ -7,7 +7,7 @@ import numpy
 import onnxruntime
 from tqdm import tqdm
 
-from facefusion import process_manager, state_manager, wording
+from facefusion import process_manager, wording
 from facefusion.download import conditional_download
 from facefusion.execution import apply_execution_provider_options
 from facefusion.filesystem import is_file, resolve_relative_path
