@@ -21,29 +21,17 @@ from facefusion import choices as ff_choices
 from facefusion.uis.components import about, common_options, execution, execution_queue_count, execution_thread_count, face_analyser, face_masker, face_selector, frame_processors, frame_processors_options, memory, output, output_options, preview, source, target, temp_frame, trim_frame
 import facefusion.globals
 from facefusion.processors.frame import globals as frame_processors_globals
+
 try:
 	from facefusion.uis.components import target_options
 	yt_addon = True
 except ImportError:
 	yt_addon = False
 
-import pkg_resources
 facefusion_version = metadata.get('version')
-queueitup_version = '2.6.11 --->  is  FACEFUSION 2.6.1 and up compatable '
+queueitup_version = '2.6.11 --->  is  FACEFUSION 2.6.1 compatable '
 automatic1111 = "AUTOMATIC1111" in facefusion_version
 
-def is_version_valid(version_str):
-	if version_str == "NEXT":
-		return True
-	try:
-		parsed_version = version.parse(version_str)
-		return parsed_version >= version.parse("2.7")
-	except InvalidVersion:
-		return False
-FF_Does_Jobs = is_version_valid(facefusion_version)
-if FF_Does_Jobs:
-	print(f"this version of QUEUEITUP is not compatable >2.6.1 version of FACEFUSION")
-	exit
 
 def pre_check() -> bool:
 	return True
@@ -134,7 +122,7 @@ def listen() -> None:
 
 def run(ui : gradio.Blocks) -> None:
 	if not automatic1111:
-		ui.launch(show_api = False, inbrowser = facefusion.globals.open_browser)
+			ui.launch(show_api = False, inbrowser = facefusion.globals.open_browser)
 	if automatic1111:
 		import multiprocessing
 		concurrency_count = min(8, multiprocessing.cpu_count())
@@ -143,6 +131,7 @@ def run(ui : gradio.Blocks) -> None:
 def assemble_queue():
 	global RUN_JOBS_BUTTON, ADD_JOB_BUTTON, jobs_queue_file, jobs, STATUS_WINDOW, default_values, current_values
 	missing_paths = []
+
 	if not facefusion.globals.target_path:
 		missing_paths.append("target path")
 	if not facefusion.globals.output_path:
@@ -314,9 +303,9 @@ def execute_jobs():
 			source_basenames = f"Source File {os.path.basename(current_run_job['sourcecache'])}"
 		target_filetype, orig_video_length, output_video_length, output_dimensions, orig_dimensions = get_target_info(current_run_job['targetcache'], current_run_job)
 		if target_filetype == 'Video':
-			custom_print(f"{BLUE}Job #{CURRENT_JOB_NUMBER} will be doing {YELLOW}{printjobtype}{ENDC} - with {GREEN}{source_basenames}{YELLOW} to -> the Target {orig_video_length} {orig_dimensions} {target_filetype} {GREEN}{os.path.basename(current_run_job['targetcache'])}{ENDC} , which will be saved as a {YELLOW}{output_video_length} {output_dimensions} sized {target_filetype}{ENDC} in the folder {GREEN}{current_run_job['output_path']}{ENDC}\n\n")
+			custom_print(f"{BLUE}Job #{CURRENT_JOB_NUMBER} will be doing {YELLOW}{printjobtype}{ENDC} - with {GREEN}{source_basenames}{YELLOW} to -> the Target {orig_video_length} {orig_dimensions} {target_filetype} {GREEN}{os.path.basename(current_run_job['targetcache'])}{ENDC} , which will be saved in the folder {GREEN}{current_run_job['output_path']}{ENDC}\n\n")
 		else:
-			custom_print(f"{BLUE}Job #{CURRENT_JOB_NUMBER} will be doing {YELLOW}{printjobtype}{ENDC} - with {GREEN}{source_basenames}{YELLOW} to -> the Target {orig_dimensions} {target_filetype} {GREEN}{os.path.basename(current_run_job['targetcache'])}{ENDC} , which will be saved as a {YELLOW} {output_dimensions} sized {target_filetype}{ENDC} in the folder {GREEN}{current_run_job['output_path']}{ENDC}\n\n")
+			custom_print(f"{BLUE}Job #{CURRENT_JOB_NUMBER} will be doing {YELLOW}{printjobtype}{ENDC} - with {GREEN}{source_basenames}{YELLOW} to -> the Target {orig_dimensions} {target_filetype} {GREEN}{os.path.basename(current_run_job['targetcache'])}{ENDC} , which will be saved in the folder {GREEN}{current_run_job['output_path']}{ENDC}\n\n")
 			
 ##
 		RUN_job_args(current_run_job)
@@ -1297,12 +1286,15 @@ def RUN_job_args(current_run_job):
 	arg_output_path = f"-o \"{clioutputname}\""
 	simulated_args = f"{arg_source_paths} {arg_target_path} {arg_output_path} {current_run_job['headless']} {current_run_job['job_args']}"
 	simulated_cmd = simulated_args.replace('\\\\', '\\')
+
 	if automatic1111:
+
 		#debug_print (f"{venv_python} {base_dir}\\run2.py {simulated_cmd}")
 		process = subprocess.Popen(
 			f"{venv_python} {base_dir}\\run2.py {simulated_cmd}",
 			shell=True,
 			stdout=subprocess.PIPE,
+			stderr=subprocess.PIPE,
 			text=True,
 			bufsize=1  # Line-buffered
 		)
@@ -1312,12 +1304,14 @@ def RUN_job_args(current_run_job):
 			f"python run.py {simulated_cmd}",
 			shell=True,
 			stdout=subprocess.PIPE,
+			stderr=subprocess.PIPE,
 			text=True,
 			bufsize=1  # Line-buffered
 		)
 
 	# process.wait()	# Wait for process to complete
 	stdout_lines = []
+	stderr_lines = []
 
 	def handle_output(stream, lines, is_stdout):
 		previous_line_was_progress = False
@@ -1340,17 +1334,21 @@ def RUN_job_args(current_run_job):
 					else:
 						print(f"{label}: {YELLOW}{line.strip()}{ENDC}")
 	stdout_thread = threading.Thread(target=handle_output, args=(process.stdout, stdout_lines, True))
+	stderr_thread = threading.Thread(target=handle_output, args=(process.stderr, stderr_lines, False))
 
 	stdout_thread.start()
+	stderr_thread.start()
 
 	stdout_thread.join()
+	stderr_thread.join()
 
 	return_code = process.poll()
 
 	stdout = ''.join(stdout_lines)
+	stderr = ''.join(stderr_lines)
 
 	# Check for errors in the output
-	if "error" in stdout.lower() or "failed" in stdout.lower():
+	if "error" in stdout.lower() or "error" in stderr.lower() or "failed" in stdout.lower() or "failed" in stderr.lower():
 		current_run_job['status'] = 'failed'
 		return_code = 1
 	elif return_code == 0:
@@ -1464,6 +1462,7 @@ def get_values_from_FF(state_name):
 	state_dict = {}
 	frame_processors_choices_dict = {}
 	ff_choices_dict = {}
+
 
 	imp_current_values = [facefusion.globals, frame_processors_globals]
 	for imp_current_value in imp_current_values:
@@ -1792,7 +1791,6 @@ ENDC = '\033[0m'	   #use this	Resets color to default
 
 print(f"{BLUE}FaceFusion version: {GREEN}{facefusion_version}{ENDC}")
 print(f"{BLUE}QueueItUp! version: {GREEN}{queueitup_version}{ENDC}")
-
 if not automatic1111:
 	default_values = get_values_from_FF("default_values")	
 	settings_path = default_values.get("config_path", "")
@@ -1828,10 +1826,6 @@ last_justtextmsg = ""
 root = None
 pending_jobs_var = None
 
-		
-
-gradio_version = pkg_resources.get_distribution("gradio").version
-debug_print(f"gradio version: {gradio_version}")
 debug_print("FaceFusion Base Directory:", base_dir)
 debug_print("QueueItUp Working Directory:", working_dir)
 debug_print("QueueItUp Media Cache Directory:", media_cache_dir)
