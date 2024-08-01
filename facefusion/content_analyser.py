@@ -7,14 +7,14 @@ import numpy
 import onnxruntime
 from tqdm import tqdm
 
+import facefusion.globals
 from facefusion import process_manager, wording
-from facefusion.download import conditional_download
+from facefusion.thread_helper import thread_lock, conditional_thread_semaphore
+from facefusion.typing import VisionFrame, ModelSet, Fps
 from facefusion.execution import apply_execution_provider_options
-from facefusion.filesystem import is_file, resolve_relative_path
-from facefusion.thread_helper import conditional_thread_semaphore, thread_lock
-from facefusion.typing import Fps, ModelSet, VisionFrame
-from facefusion.vision import count_video_frame_total, detect_video_fps, get_video_frame, read_image
-
+from facefusion.vision import get_video_frame, count_video_frame_total, read_image, detect_video_fps
+from facefusion.filesystem import resolve_relative_path, is_file
+from facefusion.download import conditional_download
 CONTENT_ANALYSER = None
 MODELS : ModelSet =\
 {
@@ -85,7 +85,7 @@ def analyse_video(video_path : str, start_frame : int, end_frame : int) -> bool:
 	rate = 0.0
 	counter = 0
 
-	with tqdm(total = len(frame_range), desc = wording.get('analysing'), unit = 'frame', ascii = ' =', disable = state_manager.get_item('log_level') in [ 'warn', 'error' ]) as progress:
+	with tqdm(total = len(frame_range), desc = wording.get('analysing'), unit = 'frame', ascii = ' =', disable = facefusion.globals.log_level in [ 'warn', 'error' ]) as progress:
 		for frame_number in frame_range:
 			# if frame_number % int(video_fps) == 0:
 				# frame = get_video_frame(video_path, frame_number)
@@ -93,5 +93,5 @@ def analyse_video(video_path : str, start_frame : int, end_frame : int) -> bool:
 					# counter += 1
 			# rate = counter * int(video_fps) / len(frame_range) * 100
 			progress.update()
-			progress.set_postfix(rate = rate)
+			# progress.set_postfix(rate = rate)
 	return False  # Return False or adapt as necessary for your workflow
